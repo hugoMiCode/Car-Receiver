@@ -4,24 +4,31 @@
 #include <Arduino.h>
 #include <Chrono.h>
 
-const int bufferSize = 6;
+#define IR_RECEIVE_PIN 2
+#define BUFFER_SIZE 6
+#define MIN_SECTOR_TIME_MS 1000 // trop court il faudra le modifier
+
+enum class Puce{
+  None = 0,
+  Finish = 1,
+  Sector1 = 2,
+  Sector2 = 3
+};
 
 
 class IRReceiver {
   private:
     Chrono pulseClock;
     int oldState;
-    bool cleared;
-    uint8_t dataBuffer[bufferSize];
-    uint8_t cursor;
+    uint8_t dataBuffer[BUFFER_SIZE];
+    uint8_t cursor; // position dans le buffer
     int highTime;
     int lowTime;
-    Chrono detectionGapClock;
-    bool canBeDetected;
-    Chrono lapClocks[3];
+
+    Chrono lapClock;
 
     int decodeBitPeriode();
-    int decodePuceBuffer();
+    Puce decodePuceBuffer();
     void clearBuffer();
 
   public:

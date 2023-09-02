@@ -1,19 +1,17 @@
 #include "IRReceiver.h"
 
-const int IR_RECEIVE_PIN = 2;
-const uint64_t minTimeLapMs = 500;
 
 IRReceiver::IRReceiver() {}
 
 int IRReceiver::decodeBitPeriode() {
-    if (abs(lowTime - 400) < 150)
+  if (abs(lowTime - 400) < 150)
     return 0;
   if (abs(lowTime - 800) < 150)
     return 1;
   return -1;
 }
 
-int IRReceiver::decodePuceBuffer() {
+Puce IRReceiver::decodePuceBuffer() {
   bool puce1 = true;
   bool puce2 = true;
   bool puce3 = true;
@@ -21,12 +19,12 @@ int IRReceiver::decodePuceBuffer() {
   int oldBit = -1;
   bool falseBit = false;
   
-  for (int i = 0; i < bufferSize; i++) {
-    int newBit = dataBuffer[(cursor + i) % bufferSize];
+  for (int i = 0; i < BUFFER_SIZE; i++) {
+    int newBit = dataBuffer[(cursor + i) % BUFFER_SIZE];
 
     if (newBit == -1) {
       if (falseBit)
-        return 0;
+        return Puce::None;
 
       falseBit = true;
       continue;    
@@ -44,27 +42,30 @@ int IRReceiver::decodePuceBuffer() {
   }
   
   if (puce1)
-    return 1;
+    return Puce::Finish;
   if (puce2)
-    return 2;
+    return Puce::Sector1;
   if (puce3)
-    return 3;
+    return Puce::Sector2;
 
-  return 0;}
+  return Puce::None;
+}
 
 void IRReceiver::clearBuffer() {
-  for (int i = 0; i < bufferSize; i++) {
+  for (int i = 0; i < BUFFER_SIZE; i++) {
     dataBuffer[i] = -1;
     cursor = 0;
-  }  }
+  }  
+}
 
 void IRReceiver::setup() {
   pinMode(IR_RECEIVE_PIN, INPUT);
-  for (int i = 0; i < 3; i++)
-    lapClocks[i] = Chrono(Chrono::MILLIS);
+
+  lapClock = Chrono(Chrono::MILLIS);
 }
 
 void IRReceiver::loop() {
+  //decode le signal et stock dans le buffer
   if (oldState != digitalRead(IR_RECEIVE_PIN)) {
     if (pulseClock.hasPassed(100, false)) {
       if (oldState == LOW) {
@@ -75,45 +76,34 @@ void IRReceiver::loop() {
         oldState = LOW;
         lowTime = pulseClock.elapsed();
             
-        dataBuffer[cursor % bufferSize] = decodeBitPeriode();
-        //Serial.println(dataBuffer[cursor % bufferSize]);
-        cursor++;
-      }
+        dataBuffer[cursor] = decodeBitPeriode();
 
-      cleared = false;
+        cursor = (cursor + 1) % BUFFER_SIZE;
+      }
     }
     pulseClock.restart();
   }
 
-  if (detectionGapClock.hasPassed(300, false)) {
-    canBeDetected = true;
-  }
 
   
-  if (!cleared && pulseClock.hasPassed(10000, false)) {
-    clearBuffer();
-    cleared = true;
-    canBeDetected = true;
-    //Serial.println("Buffer Cleared");
-  }  
-  
-  if (!cleared && canBeDetected) {
-    int puceId = decodePuceBuffer();
-      
-    if (puceId != 0 && lapClocks[puceId - 1].hasPassed(minTimeLapMs, false)) {
-      String complete_msg = "{" + String(puceId) + ": " + String(lapClocks[puceId - 1].elapsed()) + "}";
-      char *to_send = &complete_msg[0]; 
-      //Serial.println("Gap(ms): " + String(detectionGapClock.elapsed()));
-      Serial.println(to_send);
+  if (lapClock.hasPassed(MIN_SECTOR_TIME_MS, false)) {
+    Puce puce = decodePuceBuffer();
     
-      lapClocks[puceId - 1].restart();
-      detectionGapClock.restart();
-
-      canBeDetected = false;
-
-      digitalWrite(48, HIGH);
-      delay(100);
-      digitalWrite(48, LOW);
+    switch (puce)
+    {
+    case Puce::None:
+      break;
+    case Puce::Sector1:
+      break;
+    case Puce::Sector2:
+      break;
+    case Puce::Finish:
+      lapClock.restart();
+      break;
+    default:
+      break;
     }
+
+    // stocker l'info dans la class, l'acceder avec un geteur => envoyer dans main avec la class wifisender 
   }
 }
