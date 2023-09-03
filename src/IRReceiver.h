@@ -4,9 +4,9 @@
 #include <Arduino.h>
 #include <Chrono.h>
 
-#define IR_RECEIVE_PIN 2
 #define BUFFER_SIZE 6
 #define MIN_SECTOR_TIME_MS 1000 // trop court il faudra le modifier
+
 
 enum class Puce{
   None = 0,
@@ -15,9 +15,10 @@ enum class Puce{
   Sector2 = 3
 };
 
-
 class IRReceiver {
   private:
+    int irPin;
+    
     Chrono pulseClock;
     int oldState;
     uint8_t dataBuffer[BUFFER_SIZE];
@@ -32,7 +33,7 @@ class IRReceiver {
     void clearBuffer();
 
   public:
-    IRReceiver();
+    IRReceiver(int pin);
 
     void setup();
     void loop();

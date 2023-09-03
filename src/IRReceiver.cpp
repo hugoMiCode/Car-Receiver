@@ -1,7 +1,9 @@
 #include "IRReceiver.h"
 
 
-IRReceiver::IRReceiver() {}
+IRReceiver::IRReceiver(int pin) {
+  this->irPin = pin;
+}
 
 int IRReceiver::decodeBitPeriode() {
   if (abs(lowTime - 400) < 150)
@@ -59,14 +61,14 @@ void IRReceiver::clearBuffer() {
 }
 
 void IRReceiver::setup() {
-  pinMode(IR_RECEIVE_PIN, INPUT);
+  pinMode(irPin, INPUT);
 
   lapClock = Chrono(Chrono::MILLIS);
 }
 
 void IRReceiver::loop() {
   //decode le signal et stock dans le buffer
-  if (oldState != digitalRead(IR_RECEIVE_PIN)) {
+  if (oldState != digitalRead(irPin)) {
     if (pulseClock.hasPassed(100, false)) {
       if (oldState == LOW) {
         oldState = HIGH;

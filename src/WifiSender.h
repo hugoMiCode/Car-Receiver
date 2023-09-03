@@ -5,6 +5,7 @@
 #include <SPI.h>
 #include <RF24.h>
 
+
 class WifiSender {
 private:
   RF24 radio;
@@ -13,7 +14,7 @@ private:
 public:
   WifiSender(uint8_t cePin, uint8_t csnPin) : radio(cePin, csnPin) {}
 
-  void begin() {
+  void setup() {
     radio.begin();
     radio.openWritingPipe(address);
     radio.setPALevel(RF24_PA_MIN);
@@ -24,8 +25,8 @@ public:
     return radio.available();
   }
 
-  void sendMessage(char* text) {
-    radio.write(&text, sizeof(text));
+  void sendMessage(const char* message) {
+    radio.write(message, strlen(message) + 1);
   }
 };
 
