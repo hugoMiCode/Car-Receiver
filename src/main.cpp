@@ -17,9 +17,17 @@ void setup() {
 }
 
 void loop() { 
-  irReceiver.loop();// pull puce detected => envoie avec wifiSender class
+  irReceiver.loop(); // pull puce detected => envoie avec wifiSender class
 
-  
-  const char* message = "Mon message";
-  wifiSender.sendMessage(message);
+  if (irReceiver.received() || true) {
+
+    irReceiver.sectorTime = 2000;
+    irReceiver.puceIdPassed = Puce::Finish;
+
+    // Il faudra creer un protocole pour communiquer les messages en moins de 32bits
+    String message = String(int(irReceiver.puceIdPassed)) + "," + String(irReceiver.sectorTime);
+    wifiSender.sendMessage(&message[0]);
+
+    delay(1000);
+  }
 }

@@ -14,15 +14,15 @@ int IRReceiver::decodeBitPeriode() {
 }
 
 Puce IRReceiver::decodePuceBuffer() {
-  bool puce1 = true;
-  bool puce2 = true;
-  bool puce3 = true;
+  bool finish = true;
+  bool sector1 = true;
+  bool sector2 = true;
   
   int oldBit = -1;
   bool falseBit = false;
   
   for (int i = 0; i < BUFFER_SIZE; i++) {
-    int newBit = dataBuffer[(cursor + i) % BUFFER_SIZE];
+    int newBit = bitBuffer[(bufferPosition + i) % BUFFER_SIZE];
 
     if (newBit == -1) {
       if (falseBit)
@@ -33,21 +33,21 @@ Puce IRReceiver::decodePuceBuffer() {
     }
           
     if (newBit == 0)
-      puce2 = false;
+      sector1 = false;
     else if (newBit == 1)
-      puce1 = false;
+      finish = false;
 
     if (newBit == oldBit)
-      puce3 = false;
+      sector2 = false;
 
     oldBit = newBit;
   }
   
-  if (puce1)
+  if (finish)
     return Puce::Finish;
-  if (puce2)
+  if (sector1)
     return Puce::Sector1;
-  if (puce3)
+  if (sector2)
     return Puce::Sector2;
 
   return Puce::None;
@@ -55,8 +55,8 @@ Puce IRReceiver::decodePuceBuffer() {
 
 void IRReceiver::clearBuffer() {
   for (int i = 0; i < BUFFER_SIZE; i++) {
-    dataBuffer[i] = -1;
-    cursor = 0;
+    bitBuffer[i] = -1;
+    bufferPosition = 0;
   }  
 }
 
@@ -64,6 +64,7 @@ void IRReceiver::setup() {
   pinMode(irPin, INPUT);
 
   lapClock = Chrono(Chrono::MILLIS);
+  sectorClock = Chrono(Chrono::MILLIS);
 }
 
 void IRReceiver::loop() {
@@ -78,9 +79,9 @@ void IRReceiver::loop() {
         oldState = LOW;
         lowTime = pulseClock.elapsed();
             
-        dataBuffer[cursor] = decodeBitPeriode();
+        bitBuffer[bufferPosition] = decodeBitPeriode();
 
-        cursor = (cursor + 1) % BUFFER_SIZE;
+        bufferPosition = (bufferPosition + 1) % BUFFER_SIZE;
       }
     }
     pulseClock.restart();
@@ -88,19 +89,27 @@ void IRReceiver::loop() {
 
 
   
-  if (lapClock.hasPassed(MIN_SECTOR_TIME_MS, false)) {
-    Puce puce = decodePuceBuffer();
+  if (sectorClock.hasPassed(MIN_SECTOR_TIME_MS, false)) {
+    puceIdPassed = decodePuceBuffer();
     
-    switch (puce)
+    switch (puceIdPassed)
     {
     case Puce::None:
       break;
     case Puce::Sector1:
+      sectorTime = sectorClock.elapsed();
+      sectorClock.restart();
+      passesSectorOrFinish = true;
       break;
     case Puce::Sector2:
+      sectorTime = sectorClock.elapsed();
+      sectorClock.restart();
+      passesSectorOrFinish = true;
       break;
     case Puce::Finish:
+      sectorTime = lapClock.elapsed();
       lapClock.restart();
+      passesSectorOrFinish = true;
       break;
     default:
       break;
@@ -108,4 +117,14 @@ void IRReceiver::loop() {
 
     // stocker l'info dans la class, l'acceder avec un geteur => envoyer dans main avec la class wifisender 
   }
+}
+
+bool IRReceiver::received()
+{
+  if (passesSectorOrFinish) {
+    passesSectorOrFinish = false;
+    return true;
+  }
+
+  return false;
 }

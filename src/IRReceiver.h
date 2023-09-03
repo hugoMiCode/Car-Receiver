@@ -21,12 +21,17 @@ class IRReceiver {
     
     Chrono pulseClock;
     int oldState;
-    uint8_t dataBuffer[BUFFER_SIZE];
-    uint8_t cursor; // position dans le buffer
+    uint8_t bitBuffer[BUFFER_SIZE];
+    uint8_t bufferPosition; // position dans le buffer
     int highTime;
     int lowTime;
 
     Chrono lapClock;
+    Chrono sectorClock;
+
+
+    bool passesSectorOrFinish;
+
 
     int decodeBitPeriode();
     Puce decodePuceBuffer();
@@ -37,6 +42,11 @@ class IRReceiver {
 
     void setup();
     void loop();
+
+    bool received();
+    
+    int sectorTime;
+    Puce puceIdPassed;
 };
 
 #endif // IR_RECEIVER_H
