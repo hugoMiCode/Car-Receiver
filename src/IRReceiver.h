@@ -20,19 +20,19 @@ class IRReceiver {
     int irPin;
     
     Chrono pulseClock;
-    int oldState;
-    uint8_t bitBuffer[BUFFER_SIZE];
+    int oldState = HIGH;
+    int8_t bitBuffer[BUFFER_SIZE]; // changer pour gagner de l'espace memoire -> ie morpion en c E3A
     uint8_t bufferPosition; // position dans le buffer
-    int highTime;
-    int lowTime;
+    Chrono::chrono_t highTime;
+    Chrono::chrono_t lowTime;
 
     Chrono lapClock;
     Chrono sectorClock;
 
-
     bool passesSectorOrFinish;
 
 
+    void readPin();
     int decodeBitPeriode();
     Puce decodePuceBuffer();
     void clearBuffer();

@@ -3,8 +3,8 @@
 #include "IRReceiver.h"
 
 #define IR_RECEIVER_PIN 2
-#define WIFI_CE_PIN 7
-#define WIFI_CSN_PIN 8
+#define WIFI_CE_PIN 10
+#define WIFI_CSN_PIN 9
 
 IRReceiver irReceiver(IR_RECEIVER_PIN);
 WifiSender wifiSender(WIFI_CE_PIN, WIFI_CSN_PIN);
@@ -19,7 +19,7 @@ void setup() {
 void loop() { 
   irReceiver.loop(); // pull puce detected => envoie avec wifiSender class
 
-  if (irReceiver.received() || true) {
+  if (irReceiver.received() && false) {
 
     irReceiver.sectorTime = 2000;
     irReceiver.puceIdPassed = Puce::Finish;

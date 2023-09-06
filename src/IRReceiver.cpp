@@ -5,10 +5,31 @@ IRReceiver::IRReceiver(int pin) {
   this->irPin = pin;
 }
 
+//decode le signal et stock dans le buffer
+void IRReceiver::readPin() {
+  if (oldState != digitalRead(irPin)) {
+    if (oldState == LOW) {
+      oldState = HIGH;
+
+      highTime = pulseClock.elapsed();
+      pulseClock.restart();
+    }
+    else {
+      oldState = LOW;
+
+      lowTime = pulseClock.elapsed();
+      pulseClock.restart();
+
+      bitBuffer[bufferPosition] = decodeBitPeriode();
+      bufferPosition = (bufferPosition + 1) % BUFFER_SIZE;
+    }
+  }
+}
+
 int IRReceiver::decodeBitPeriode() {
-  if (abs(lowTime - 400) < 150)
+  if (abs((int32_t)lowTime - 400) < 150)
     return 0;
-  if (abs(lowTime - 800) < 150)
+  if (abs((int32_t)lowTime - 800) < 150)
     return 1;
   return -1;
 }
@@ -63,35 +84,21 @@ void IRReceiver::clearBuffer() {
 void IRReceiver::setup() {
   pinMode(irPin, INPUT);
 
+  pulseClock = Chrono(Chrono::MICROS);
   lapClock = Chrono(Chrono::MILLIS);
   sectorClock = Chrono(Chrono::MILLIS);
+
+  clearBuffer();
 }
 
 void IRReceiver::loop() {
-  //decode le signal et stock dans le buffer
-  if (oldState != digitalRead(irPin)) {
-    if (pulseClock.hasPassed(100, false)) {
-      if (oldState == LOW) {
-        oldState = HIGH;
-        highTime = pulseClock.elapsed();
-      }
-      else {
-        oldState = LOW;
-        lowTime = pulseClock.elapsed();
-            
-        bitBuffer[bufferPosition] = decodeBitPeriode();
-
-        bufferPosition = (bufferPosition + 1) % BUFFER_SIZE;
-      }
-    }
-    pulseClock.restart();
-  }
-
-
-  
   if (sectorClock.hasPassed(MIN_SECTOR_TIME_MS, false)) {
+
+    readPin();
+
     puceIdPassed = decodePuceBuffer();
     
+      
     switch (puceIdPassed)
     {
     case Puce::None:
@@ -100,23 +107,33 @@ void IRReceiver::loop() {
       sectorTime = sectorClock.elapsed();
       sectorClock.restart();
       passesSectorOrFinish = true;
+      clearBuffer();
+
+      Serial.println("Puce: Sector1, temps: " + String(sectorTime));
       break;
     case Puce::Sector2:
       sectorTime = sectorClock.elapsed();
       sectorClock.restart();
       passesSectorOrFinish = true;
+      clearBuffer();
+
+      Serial.println("Puce: Sector2, temps: " + String(sectorTime));
       break;
     case Puce::Finish:
       sectorTime = lapClock.elapsed();
       lapClock.restart();
+      sectorClock.restart();
       passesSectorOrFinish = true;
+      clearBuffer();
+
+      Serial.println("Puce: Finish, temps: " + String(sectorTime));
+
       break;
     default:
       break;
     }
-
-    // stocker l'info dans la class, l'acceder avec un geteur => envoyer dans main avec la class wifisender 
   }
+    // stocker l'info dans la class, l'acceder avec un geteur => envoyer dans main avec la class wifisender 
 }
 
 bool IRReceiver::received()
