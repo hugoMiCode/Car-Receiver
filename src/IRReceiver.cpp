@@ -85,10 +85,12 @@ void IRReceiver::setup() {
   pinMode(irPin, INPUT);
 
   pulseClock = Chrono(Chrono::MICROS);
-  lapClock = Chrono(Chrono::MILLIS);
+  finishClock = Chrono(Chrono::MILLIS);
   sectorClock = Chrono(Chrono::MILLIS);
 
   clearBuffer();
+
+  pucePassed = Puce::None;
 }
 
 void IRReceiver::loop() {
@@ -96,17 +98,29 @@ void IRReceiver::loop() {
 
     readPin();
 
-    puceIdPassed = decodePuceBuffer();
+    Puce puceIdPassed = decodePuceBuffer();
     
       
     switch (puceIdPassed)
     {
     case Puce::None:
       break;
+    case Puce::Finish:
+      sectorTime = finishClock.elapsed();
+      finishClock.restart();
+      sectorClock.restart();
+      pucePassed = Puce::Finish;
+      triggerSendTimeSector = true;
+      clearBuffer();
+
+      Serial.println("Puce: Finish, temps: " + String(sectorTime));
+
+     break;
     case Puce::Sector1:
       sectorTime = sectorClock.elapsed();
       sectorClock.restart();
-      passesSectorOrFinish = true;
+      pucePassed = Puce::Sector1;
+      triggerSendTimeSector = true;
       clearBuffer();
 
       Serial.println("Puce: Sector1, temps: " + String(sectorTime));
@@ -114,20 +128,11 @@ void IRReceiver::loop() {
     case Puce::Sector2:
       sectorTime = sectorClock.elapsed();
       sectorClock.restart();
-      passesSectorOrFinish = true;
+      pucePassed = Puce::Sector2;
+      triggerSendTimeSector = true;
       clearBuffer();
 
       Serial.println("Puce: Sector2, temps: " + String(sectorTime));
-      break;
-    case Puce::Finish:
-      sectorTime = lapClock.elapsed();
-      lapClock.restart();
-      sectorClock.restart();
-      passesSectorOrFinish = true;
-      clearBuffer();
-
-      Serial.println("Puce: Finish, temps: " + String(sectorTime));
-
       break;
     default:
       break;
@@ -136,12 +141,22 @@ void IRReceiver::loop() {
     // stocker l'info dans la class, l'acceder avec un geteur => envoyer dans main avec la class wifisender 
 }
 
-bool IRReceiver::received()
+bool IRReceiver::puceDetected()
 {
-  if (passesSectorOrFinish) {
-    passesSectorOrFinish = false;
+  if (triggerSendTimeSector) {
+      triggerSendTimeSector = false;
     return true;
   }
 
   return false;
+}
+
+Puce IRReceiver::getPucePassed()
+{
+  return pucePassed;
+}
+
+Chrono::chrono_t IRReceiver::getSectorTime()
+{
+  return sectorTime;
 }

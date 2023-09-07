@@ -26,10 +26,12 @@ class IRReceiver {
     Chrono::chrono_t highTime;
     Chrono::chrono_t lowTime;
 
-    Chrono lapClock;
+    Chrono finishClock;
     Chrono sectorClock;
 
-    bool passesSectorOrFinish;
+    bool triggerSendTimeSector;
+    Puce pucePassed;
+    Chrono::chrono_t sectorTime;
 
 
     void readPin();
@@ -43,10 +45,9 @@ class IRReceiver {
     void setup();
     void loop();
 
-    bool received();
-    
-    int sectorTime;
-    Puce puceIdPassed;
+    bool puceDetected();
+    Puce getPucePassed();
+    Chrono::chrono_t getSectorTime();
 };
 
 #endif // IR_RECEIVER_H

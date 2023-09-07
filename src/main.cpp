@@ -17,15 +17,13 @@ void setup() {
 }
 
 void loop() { 
-  irReceiver.loop(); // pull puce detected => envoie avec wifiSender class
+  irReceiver.loop();
 
-  if (irReceiver.received() && false) {
-
-    irReceiver.sectorTime = 2000;
-    irReceiver.puceIdPassed = Puce::Finish;
+  if (irReceiver.puceDetected()) {
 
     // Il faudra creer un protocole pour communiquer les messages en moins de 32bits
-    String message = String(int(irReceiver.puceIdPassed)) + "," + String(irReceiver.sectorTime);
+    String message = String(int(irReceiver.getPucePassed())) + "," + String(irReceiver.getSectorTime());
+    Serial.println("Sending message: " + message);
     wifiSender.sendMessage(&message[0]);
 
     delay(1000);
